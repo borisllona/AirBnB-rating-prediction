@@ -4,21 +4,20 @@ import random as rm
 import sys
 import argparse
 
-attributeslist = ['@RELATION overall_satisfaction','',
-'@ATTRIBUTE room_type {PrivateRoom,EntireHome,SharedRoom}',
+attributeslist = ['@RELATION overallSatisfaction','',
+'@ATTRIBUTE roomType {PrivateRoom,EntireHome,SharedRoom}',
 '@ATTRIBUTE neighborhood {LesCorts,SantsMontjuic,CiutatVella,SantMarti,Gracia,Horta,Sarria,Eixample,SantAndreu,NouBarris}',
-'@ATTRIBUTE reviews NUMERIC','@ATTRIBUTE overall_satisfaction NUMERIC',
-'@ATTRIBUTE accommodates NUMERIC','@ATTRIBUTE bedrooms NUMERIC',
-'@ATTRIBUTE price NUMERIC','@ATTRIBUTE latitude NUMERIC','@ATTRIBUTE longitude NUMERIC','','@DATA']
+'@ATTRIBUTE reviews ','@ATTRIBUTE overallSatisfaction {1,2,3,4,5,6,7,8,9,10}',
+'@ATTRIBUTE accommodates ','@ATTRIBUTE bedrooms ',
+'@ATTRIBUTE price ','@ATTRIBUTE latitude ','@ATTRIBUTE longitude ','','@DATA']
 
-def deletePreviousSets(args):
-    for i in [args.test_output,args.train_output]:
-        with open(i, 'w') as f:
-            for el in attributeslist: f.write(el+'\n')
-            f.close()
+def write_headers(f):
+    for atr in attributeslist:
+        f.write(atr+'\n')
 
-def writeToFile(setType,files):
-        with open(files, 'a') as f:
+def write_to_file(setType,files):
+        with open(files, 'w') as f:
+            write_headers(f)
             for index,row in setType.iterrows():
                 for n, el in enumerate(row):
                     f.write(str(el))
@@ -35,12 +34,32 @@ def format_dataset(df):
     ["SharedRoom","EntireHome","PrivateRoom","LesCorts","SantAndreu","NouBarris",
     "SantsMontjuic","CiutatVella","SantMarti","Gracia","Horta","Sarria"])
 
-    #Maps the overal satisfaction from range 1-5 to 1-10. In order to avoid decimal numbers
-    df['overall_satisfaction'] = df['overall_satisfaction'].map(lambda x: x*2)
+    #Maps the overal satisfaction from range 1-5 to 1-10. In order to avoid decimal numbers.
+    #Also we save in the header list the possible values.
+
+    df['overall_satisfaction'] = df['overall_satisfaction'].map(lambda x: int(x*2))
+    
+    #converts all atribute column to string, and then it gets the distinct values and format it.
+    df['reviews'] = df['reviews'].astype(str)
+    attributeslist[4]+='{'+','.join(x for x in list(map(str.strip,df.reviews.unique())))+'}'
+
+    df['bedrooms'] = df['bedrooms'].map(lambda x: str(x)[:-2])
+    attributeslist[7]+='{'+','.join(x for x in list(map(str.strip,df.bedrooms.unique())))+'}'
+
+    df['accommodates'] = df['accommodates'].astype(str)
+    attributeslist[6]+='{'+','.join(x for x in list(map(str.strip,df.accommodates.unique())))+'}'
+    
+    df['price'] = df['price'].map(lambda x: str(x)[:-2])
+    attributeslist[8]+='{'+','.join(x for x in list(map(str.strip,df.price.unique())))+'}'
 
     #Rounds both latitude and longitude to 3 decimals (decision explained in the report of the practice)
     df['latitude'] = df['latitude'].map(lambda x: round(x, 3))
+    lat = pd.Series(df.latitude.unique())
     df['longitude'] = df['longitude'].map(lambda x: round(x, 3))
+    lon = pd.Series(df.longitude.unique())
+    
+    attributeslist[9]+='{'+','.join(str(x) for x in list(lat.dropna()))+'}'
+    attributeslist[10]+='{'+','.join(str(x) for x in list(lon.dropna()))+'}'
 
     return df 
 
@@ -61,10 +80,7 @@ def parse_command_line_arguments(argv=None):
 def main(argv=None):
     
     args = parse_command_line_arguments(argv)    
-    
-    #Previous dataset values are deleted and we write the header, used in arff files to specify the variables used.
-    deletePreviousSets(args)
-    
+
     df = format_dataset(pd.read_csv(args.dataset))
 
     #df.sample(), Return a random sample of items from an axis of object.
@@ -72,8 +88,8 @@ def main(argv=None):
     test_set = df.drop(train_set.index)
 
     #Write the train and test dataframes into the specified files
-    writeToFile(train_set,args.train_output)
-    writeToFile(test_set,args.test_output)
+    write_to_file(train_set,args.train_output)
+    write_to_file(test_set,args.test_output)
 
 if __name__ == "__main__":
     sys.exit(main())
